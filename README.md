@@ -1,20 +1,74 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Scanly AB – Full Cloud Solution
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+## Project Overview
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## Team
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+## System Architecture
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+## Repository Structure
+
+## Development Workflow
+
+Our Git workflow is:
+
+`main ← dev ← task branches`
+
+For each Azure DevOps Task:
+
+1. Switch to `dev`.
+2. Pull the latest changes from `origin/dev`.
+3. Create a new Task branch from the updated `dev` branch.
+4. Implement and test the Task.
+5. Commit the changes with the Azure DevOps Task ID.
+6. Push the Task branch.
+7. Create a Pull Request to `dev`.
+8. Get at least one review from another team member.
+9. Merge the Pull Request and verify the result.
+
+Example:
+
+```bash
+git switch dev
+git pull origin dev
+git switch -c task-16-create-scanly-api
+
+### Branch Naming
+
+Format:
+
+`task-<task-id>-<short-description>`
+
+Example:
+
+`task-15-repository-structure`
+
+### Commit Convention
+
+Format:
+
+`AB#<task-id> <description>`
+
+Example:
+
+`AB#15 Create initial repository structure`
+
+`AB#15` links the commit to the corresponding Azure DevOps Work Item.
+
+The `dev` branch is used for ongoing development, while `main` contains the stable version used for final deployment.
+
+## CI/CD Workflow
+
+## Local Development
+
+## Docker
+
+## Azure Infrastructure
+
+## Configuration and Security
+
+## API Endpoints
+
+## Documentation
+
+## Project Status
