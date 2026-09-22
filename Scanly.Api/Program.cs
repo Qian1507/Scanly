@@ -1,3 +1,4 @@
+using Scanly.Api.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 // OpenAPI / Swagger
@@ -25,6 +26,10 @@ app.MapGet("/health", () =>
 .WithName("HealthCheck")
 .WithTags("Health")
 .Produces<HealthResponse>(StatusCodes.Status200OK);
+
+
+// Invoice endpoints
+app.MapInvoiceEndpoints();
 
 app.Run();
 
