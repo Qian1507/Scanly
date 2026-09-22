@@ -18,18 +18,11 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// Health endpoint
-app.MapGet("/health", () =>
-{
-    return Results.Ok(new HealthResponse("healthy"));
-})
-.WithName("HealthCheck")
-.WithTags("Health")
-.Produces<HealthResponse>(StatusCodes.Status200OK);
 
 
 // Invoice endpoints
 app.MapInvoiceEndpoints();
+app.MapHealthEndpoints();
 
 app.Run();
 
