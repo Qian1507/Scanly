@@ -26,4 +26,5 @@ app.MapHealthEndpoints();
 
 app.Run();
 
-record HealthResponse(string Status);
+
+public partial class Program { }
