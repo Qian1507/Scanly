@@ -4,6 +4,7 @@ public static class InvoiceEndpoints
 {
     public static void MapInvoiceEndpoints(this WebApplication app)
     {
+        // POST
         app.MapPost("/invoices", async (IFormFile file) =>
         {
             if (file.Length == 0)
@@ -25,6 +26,19 @@ public static class InvoiceEndpoints
         })
         .DisableAntiforgery()
         .WithName("UploadInvoice")
+        .WithOpenApi();
+
+        // GET invoice by ID
+        app.MapGet("/invoices/{id}", (Guid id) =>
+        {
+            return Results.Ok(new
+            {
+                id = id,
+                message = "Invoice found."
+            });
+        })
+        .WithName("GetInvoiceById")
+        .WithTags("Invoices")
         .WithOpenApi();
     }
 }
