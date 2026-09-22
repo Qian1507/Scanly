@@ -40,5 +40,20 @@ public static class InvoiceEndpoints
         .WithName("GetInvoiceById")
         .WithTags("Invoices")
         .WithOpenApi();
+
+        // GET /invoices
+        app.MapGet("/invoices", () =>
+        {
+            return Results.Ok(new[]
+            {
+        new
+        {
+            message = "Invoice list will be returned here."
+        }
+    });
+        })
+        .WithName("GetInvoices")
+        .WithTags("Invoices")
+        .WithOpenApi();
     }
 }
