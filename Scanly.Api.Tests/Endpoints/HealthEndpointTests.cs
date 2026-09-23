@@ -5,7 +5,7 @@ namespace Scanly.Api.Tests.Endpoints;
 
 public class HealthEndpointTests
 {
-    [Fact(Skip = "Requires Azure Document Intelligence integration")]
+    [Fact]
     public async Task GetHealth_ReturnsOk()
     {
         await using var factory = new WebApplicationFactory<Program>();
