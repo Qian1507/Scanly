@@ -1,11 +1,16 @@
-﻿namespace Scanly.Api.Endpoints;
+﻿using Azure.AI.FormRecognizer.DocumentAnalysis;
+using Scanly.Api.Services;
+namespace Scanly.Api.Endpoints;
 
 public static class InvoiceEndpoints
 {
     public static void MapInvoiceEndpoints(this WebApplication app)
     {
         // POST /invoices
-        app.MapPost("/invoices", async (IFormFile file) =>
+        app.MapPost("/invoices", async (
+            IFormFile file,
+            DocumentIntelligenceService documentIntelligenceService,
+            CancellationToken cancellationToken) =>
         {
             if (file.Length == 0)
             {
@@ -17,15 +22,21 @@ public static class InvoiceEndpoints
 
             var invoiceId = Guid.NewGuid();
 
-            // Later:
-            // await documentIntelligenceService.AnalyzeInvoiceAsync(...);
+            // Analyze the uploaded invoice using Azure Document Intelligence.
+            var analysisResult =
+                await documentIntelligenceService.AnalyzeInvoiceAsync(
+                    file,
+                    cancellationToken);
+
+            // Blob Storage integration will be added later.
             // await blobStorageService.SaveInvoiceAsync(...);
 
             return Results.Ok(new
             {
                 id = invoiceId,
                 fileName = file.FileName,
-                message = "Invoice uploaded successfully."
+                message = "Invoice analyzed successfully.",
+                analysis = analysisResult
             });
         })
         .DisableAntiforgery()
