@@ -106,6 +106,8 @@ http://localhost:<port>/swagger
 
 Use `POST /invoices` to upload a PDF or image invoice for analysis.
 
+After pulling changes, run `dotnet restore` if project dependencies have changed.
+
 The Azure Document Intelligence endpoint and key are provided in the course material.
 
 > Sensitive values must not be committed to Git.
