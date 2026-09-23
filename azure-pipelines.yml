@@ -1,0 +1,28 @@
+trigger:
+  branches:
+    include:
+      - dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '10.x'
+
+- script: dotnet restore Scanly.Api/Scanly.Api.csproj
+  displayName: 'Restore API dependencies'
+
+- script: dotnet restore Scanly.Api.Tests/Scanly.Api.Tests.csproj
+  displayName: 'Restore test dependencies'
+
+- script: dotnet build Scanly.Api/Scanly.Api.csproj --no-restore --configuration Release
+  displayName: 'Build API'
+
+- script: dotnet build Scanly.Api.Tests/Scanly.Api.Tests.csproj --no-restore --configuration Release
+  displayName: 'Build tests'
+
+- script: dotnet test Scanly.Api.Tests/Scanly.Api.Tests.csproj --no-build --configuration Release
+  displayName: 'Run tests'
