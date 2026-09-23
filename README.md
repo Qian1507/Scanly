@@ -112,6 +112,39 @@ The Azure Document Intelligence endpoint and key are provided in the course mate
 
 > Sensitive values must not be committed to Git.
 
+
+## Run with Docker locally
+
+Build the Docker image from the repository root:
+
+```powershell
+docker build -t scanly-api .
+```
+
+Run the container:
+
+```powershell
+docker run --rm -p 8080:8080 scanly-api
+```
+
+Verify the health endpoint:
+
+```text
+http://localhost:8080/health
+```
+
+To test Azure Document Intelligence inside Docker, pass the local environment variables:
+
+```powershell
+docker run --rm -p 8080:8080 `
+  -e AZURE_DI_ENDPOINT="$env:AZURE_DI_ENDPOINT" `
+  -e AZURE_DI_KEY="$env:AZURE_DI_KEY" `
+  scanly-api
+```
+
+Do not store Azure credentials in the Dockerfile or commit them to Git.
+
+
 ## Project Status
 
 The project is currently under development.
