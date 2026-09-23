@@ -4,7 +4,7 @@ public static class InvoiceEndpoints
 {
     public static void MapInvoiceEndpoints(this WebApplication app)
     {
-        // POST
+        // POST /invoices
         app.MapPost("/invoices", async (IFormFile file) =>
         {
             if (file.Length == 0)
@@ -17,6 +17,10 @@ public static class InvoiceEndpoints
 
             var invoiceId = Guid.NewGuid();
 
+            // Later:
+            // await documentIntelligenceService.AnalyzeInvoiceAsync(...);
+            // await blobStorageService.SaveInvoiceAsync(...);
+
             return Results.Ok(new
             {
                 id = invoiceId,
@@ -26,11 +30,15 @@ public static class InvoiceEndpoints
         })
         .DisableAntiforgery()
         .WithName("UploadInvoice")
-        .WithOpenApi();
+        .WithTags("Invoices");
 
-        // GET invoice by ID
-        app.MapGet("/invoices/{id}", (Guid id) =>
+
+        // GET /invoices/{id}
+        app.MapGet("/invoices/{id}", async (Guid id) =>
         {
+            // Later:
+            // var invoice = await blobStorageService.GetInvoiceAsync(id);
+
             return Results.Ok(new
             {
                 id = id,
@@ -38,22 +46,24 @@ public static class InvoiceEndpoints
             });
         })
         .WithName("GetInvoiceById")
-        .WithTags("Invoices")
-        .WithOpenApi();
+        .WithTags("Invoices");
+
 
         // GET /invoices
-        app.MapGet("/invoices", () =>
+        app.MapGet("/invoices", async () =>
         {
+            // Later:
+            // var invoices = await blobStorageService.GetInvoicesAsync();
+
             return Results.Ok(new[]
             {
-        new
-        {
-            message = "Invoice list will be returned here."
-        }
-    });
+                new
+                {
+                    message = "Invoice list will be returned here."
+                }
+            });
         })
         .WithName("GetInvoices")
-        .WithTags("Invoices")
-        .WithOpenApi();
+        .WithTags("Invoices");
     }
-}
+}    
