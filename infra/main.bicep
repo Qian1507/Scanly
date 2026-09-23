@@ -88,12 +88,12 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
 // --------------------------------------------------
 // Container Apps Environment
 // --------------------------------------------------
-
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: '${namePrefix}-environment'
   location: location
-}
 
+  properties: {}
+}
 
 // --------------------------------------------------
 // Container App
