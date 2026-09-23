@@ -2,29 +2,37 @@
 
 ## Project Overview
 
+Scanly AB is a .NET cloud project for invoice processing.
+
+The API receives invoice files and will use Azure AI Document Intelligence to extract invoice data.
+
+Azure DevOps is used for Tasks, Git branches, Pull Requests, and team collaboration.
+
 ## Team
 
-## System Architecture
+The project is developed by three students.
 
-## Repository Structure
+Each Azure DevOps Task is implemented in a separate branch and merged into `dev` through a Pull Request.
 
 ## Development Workflow
 
-Our Git workflow is:
+Git workflow:
 
-`main ← dev ← task branches`
+```text
+main ← dev ← task branches
+```
 
-For each Azure DevOps Task:
+For each Task:
 
-1. Switch to `dev`.
-2. Pull the latest changes from `origin/dev`.
-3. Create a new Task branch from the updated `dev` branch.
-4. Implement and test the Task.
-5. Commit the changes with the Azure DevOps Task ID.
-6. Push the Task branch.
-7. Create a Pull Request to `dev`.
-8. Get at least one review from another team member.
-9. Merge the Pull Request and verify the result.
+1. Switch to `dev`
+2. Pull latest changes
+3. Create a Task branch
+4. Implement and test
+5. Commit with Task ID
+6. Push branch
+7. Create Pull Request to `dev`
+8. Get one review
+9. Merge
 
 Example:
 
@@ -32,43 +40,76 @@ Example:
 git switch dev
 git pull origin dev
 git switch -c task-16-create-scanly-api
+```
 
 ### Branch Naming
 
 Format:
 
-`task-<task-id>-<short-description>`
+```text
+task-<task-id>-<short-description>
+```
 
 Example:
 
-`task-15-repository-structure`
+```text
+task-15-repository-structure
+```
 
 ### Commit Convention
 
 Format:
 
-`AB#<task-id> <description>`
+```text
+AB#<task-id> <description>
+```
 
 Example:
 
-`AB#15 Create initial repository structure`
+```text
+AB#15 Create initial repository structure
+```
 
-`AB#15` links the commit to the corresponding Azure DevOps Work Item.
+`AB#<task-id>` links the commit to the corresponding Azure DevOps Work Item.
 
-The `dev` branch is used for ongoing development, while `main` contains the stable version used for final deployment.
-
-## CI/CD Workflow
+The `dev` branch is used for ongoing development, while `main` contains the stable version.
 
 ## Local Development
 
-## Docker
+The API uses local environment variables for Azure Document Intelligence.
 
-## Azure Infrastructure
+Required variables:
 
-## Configuration and Security
+```text
+AZURE_DI_ENDPOINT
+AZURE_DI_KEY
+```
 
-## API Endpoints
+Example in PowerShell:
 
-## Documentation
+```powershell
+$env:AZURE_DI_ENDPOINT="..."
+$env:AZURE_DI_KEY="..."
+```
+
+Then run the API from the repository root:
+
+```powershell
+dotnet run --project Scanly.Api
+```
+
+Open Swagger in the browser:
+
+```text
+http://localhost:<port>/swagger
+```
+
+Use `POST /invoices` to upload a PDF or image invoice for analysis.
+
+The Azure Document Intelligence endpoint and key are provided in the course material.
+
+> Sensitive values must not be committed to Git.
 
 ## Project Status
+
+The project is currently under development.
