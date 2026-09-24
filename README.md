@@ -112,7 +112,6 @@ The Azure Document Intelligence endpoint and key are provided in the course mate
 
 > Sensitive values must not be committed to Git.
 
-
 ## Run with Docker locally
 
 Build the Docker image from the repository root:
@@ -144,6 +143,21 @@ docker run --rm -p 8080:8080 `
 
 Do not store Azure credentials in the Dockerfile or commit them to Git.
 
+## Docker image in Azure Container Registry
+
+For Task AB#30, the Scanly API image was pushed to Azure Container Registry with the tag `v1`:
+
+```text
+scanlydev3huikt7fujnc6.azurecr.io/scanly-api:v1
+```
+
+Verify that the tag exists:
+
+```powershell
+az acr repository show-tags --name scanlydev3huikt7fujnc6 --repository scanly-api -o table
+```
+
+The command should list `v1`. This image can be used when configuring Azure Container Apps.
 
 ## Project Status
 
