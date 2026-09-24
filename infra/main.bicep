@@ -115,7 +115,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 
       ingress: {
         external: true
-        targetPort: 80
+        targetPort: 8080
         allowInsecure: false
 
         traffic: [
@@ -127,24 +127,35 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
 
-    template: {
-      containers: [
-        {
-          name: 'scanly-api'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+   template: {
+  containers: [
+    {
+      name: 'scanly-api'
+      image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
+      resources: {
+        cpu: json('0.5')
+        memory: '1Gi'
+      }
+
+      env: [
+        {
+          name: 'AZURE_DI_ENDPOINT'
+          value: ''
+        }
+        {
+          name: 'AZURE_STORAGE_URL'
+          value: 'https://${storageAccount.name}.blob.core.windows.net'
         }
       ]
-
-      scale: {
-        minReplicas: 0
-        maxReplicas: 2
-      }
     }
+  ]
+
+  scale: {
+    minReplicas: 2
+    maxReplicas: 2
+  }
+}
   }
 }
 
