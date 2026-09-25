@@ -30,14 +30,11 @@ public static class InvoiceEndpoints
 
             // Blob Storage integration will be added later.
             // await blobStorageService.SaveInvoiceAsync(...);
-
-            return Results.Ok(new
-            {
-                id = invoiceId,
-                fileName = file.FileName,
-                message = "Invoice analyzed successfully.",
-                analysis = analysisResult
-            });
+            var invoiceResult = InvoiceMapper.Map(
+                analysisResult,
+                invoiceId,
+                file.FileName);
+            return Results.Ok(invoiceResult);
         })
         .DisableAntiforgery()
         .WithName("UploadInvoice")
