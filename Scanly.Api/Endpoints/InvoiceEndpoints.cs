@@ -1,39 +1,45 @@
-﻿using Azure.AI.FormRecognizer.DocumentAnalysis;
-using Scanly.Api.Services;
+﻿using Scanly.Api.Services;
+
 namespace Scanly.Api.Endpoints;
 
 public static class InvoiceEndpoints
 {
     public static void MapInvoiceEndpoints(this WebApplication app)
     {
+        // --------------------------------------------------
         // POST /invoices
+        // Upload invoice -> analyze -> map -> save to Blob
+        // --------------------------------------------------
         app.MapPost("/invoices", async (
             IFormFile file,
             DocumentIntelligenceService documentIntelligenceService,
-            CancellationToken cancellationToken) =>
+            InvoiceStorageService invoiceStorageService) =>
         {
-            if (file.Length == 0)
+            // Check that a file was uploaded
+            if (file == null || file.Length == 0)
             {
                 return Results.BadRequest(new
                 {
-                    message = "No invoice file was uploaded."
+                    message = "Please upload an invoice file."
                 });
             }
 
+            // Generate unique ID for this invoice
             var invoiceId = Guid.NewGuid();
 
-            // Analyze the uploaded invoice using Azure Document Intelligence.
             var analysisResult =
-                await documentIntelligenceService.AnalyzeInvoiceAsync(
-                    file,
-                    cancellationToken);
-
-            // Blob Storage integration will be added later.
-            // await blobStorageService.SaveInvoiceAsync(...);
+            await documentIntelligenceService.AnalyzeInvoiceAsync(file);
+            // Convert Azure result into our Scanly response model
             var invoiceResult = InvoiceMapper.Map(
                 analysisResult,
                 invoiceId,
                 file.FileName);
+
+            // Save result as {invoiceId}.json in Azure Blob Storage
+            await invoiceStorageService.SaveAsync(
+                invoiceId.ToString(),
+                invoiceResult);
+
             return Results.Ok(invoiceResult);
         })
         .DisableAntiforgery()
@@ -41,37 +47,44 @@ public static class InvoiceEndpoints
         .WithTags("Invoices");
 
 
+        // --------------------------------------------------
         // GET /invoices/{id}
-        app.MapGet("/invoices/{id}", async (Guid id) =>
+        // Retrieve invoice JSON from Azure Blob Storage
+        // --------------------------------------------------
+        app.MapGet("/invoices/{id}", async (
+            Guid id,
+            InvoiceStorageService invoiceStorageService) =>
         {
-            // Later:
-            // var invoice = await blobStorageService.GetInvoiceAsync(id);
+            var invoice =
+                await invoiceStorageService.GetAsync(id.ToString());
 
-            return Results.Ok(new
+            if (invoice is null)
             {
-                id = id,
-                message = "Invoice found."
-            });
+                return Results.NotFound(new
+                {
+                    id,
+                    message = "Invoice not found."
+                });
+            }
+
+            return Results.Ok(invoice);
         })
         .WithName("GetInvoiceById")
         .WithTags("Invoices");
 
 
+        // --------------------------------------------------
         // GET /invoices
-        app.MapGet("/invoices", async () =>
+        // Placeholder for listing all invoices
+        // --------------------------------------------------
+        app.MapGet("/invoices", () =>
         {
-            // Later:
-            // var invoices = await blobStorageService.GetInvoicesAsync();
-
-            return Results.Ok(new[]
+            return Results.Ok(new
             {
-                new
-                {
-                    message = "Invoice list will be returned here."
-                }
+                message = "Invoice list endpoint."
             });
         })
         .WithName("GetInvoices")
         .WithTags("Invoices");
     }
-}    
+}
