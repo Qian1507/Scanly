@@ -113,6 +113,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
 
+        registries: [
+    {
+      server: containerRegistry.properties.loginServer
+      identity: 'system'
+    }
+  ]
+
       ingress: {
         external: true
         targetPort: 8080
@@ -131,8 +138,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   containers: [
     {
       name: 'scanly-api'
-      image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
+     image: '${containerRegistry.properties.loginServer}/scanly-api:latest'
       resources: {
         cpu: json('0.5')
         memory: '1Gi'
