@@ -10,6 +10,9 @@ builder.Services.AddSwaggerGen();
 // Register Azure Document Intelligence integration service.
 builder.Services.AddSingleton<DocumentIntelligenceService>();
 
+// Register Azure Blob Storage service.
+builder.Services.AddSingleton<InvoiceStorageService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
