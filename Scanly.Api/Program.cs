@@ -7,8 +7,16 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register Azure Document Intelligence integration service.
+/// Register Azure Document Intelligence integration service.
 builder.Services.AddSingleton<DocumentIntelligenceService>();
+
+builder.Services.AddSingleton<
+    IInvoiceAnalysisService,
+    InvoiceAnalysisService>();
+
+builder.Services.AddSingleton<
+    IInvoiceStorageService,
+    InvoiceStorageService>();
 
 var app = builder.Build();
 
