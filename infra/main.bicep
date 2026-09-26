@@ -1,19 +1,5 @@
 targetScope = 'resourceGroup'
 
-// --------------------------------------------------
-// Parameters
-// --------------------------------------------------
-
-@description('Container image tag')
-param imageTag string = 'latest'
-
-@description('Azure Document Intelligence endpoint')
-param diEndpoint string
-
-@secure()
-@description('Azure Document Intelligence key')
-param diKey string
-
 @description('Azure region used for all resources')
 param location string = resourceGroup().location
 
@@ -26,32 +12,13 @@ param environment string = 'dev'
 @description('Name of the blob container')
 param blobContainerName string = 'invoices'
 
-// --------------------------------------------------
-// Variables
-// --------------------------------------------------
-
-
 var namePrefix = '${projectName}-${environment}'
 
 // Storage Account and Azure Container Registry names
 // cannot contain hyphens and must be globally unique.
-
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageAccountName = take('${projectName}${environment}${uniqueSuffix}', 24)
 var containerRegistryName = take('${projectName}${environment}${uniqueSuffix}', 50)
-
-//Built-in Azure RBAC roles
-var acrPullRoleId = subscriptionResourceId(
-  'Microsoft.Authorization/roleDefinitions',
-  '7f951dda-4ed3-4680-a7ca-43fe172d538d'
-)
-
-var storageBlobDataContributorRoleId = subscriptionResourceId(
-  'Microsoft.Authorization/roleDefinitions',
-  'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-)
-
-
 
 
 // --------------------------------------------------
@@ -145,23 +112,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 
     configuration: {
       activeRevisionsMode: 'Single'
-      
-      // Use the Container App system-assigned identity
-      // to authenticate against ACR.
-       registries: [
-        {
-          server: containerRegistry.properties.loginServer
-          identity: 'system'
-        }
-      ]
 
-      // Document Intelligence key is stored as a secret.
-      secrets: [
-        {
-          name: 'azure-di-key'
-          value: diKey
-        }
-      ]
+        registries: [
+    {
+      server: containerRegistry.properties.loginServer
+      identity: 'system'
+    }
+  ]
 
       ingress: {
         external: true
@@ -181,8 +138,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   containers: [
     {
       name: 'scanly-api'
-      image: '${containerRegistry.properties.loginServer}/scanly-api:${imageTag}'
-
+    image: '${containerRegistry.properties.loginServer}/scanly-api:${imageTag}'
       resources: {
         cpu: json('0.5')
         memory: '1Gi'
@@ -191,19 +147,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       env: [
         {
           name: 'AZURE_DI_ENDPOINT'
-          value: diEndpoint
-        }
-        {
-          name: 'AZURE_DI_KEY'
-          secretRef: 'azure-di-key'
+          value: ''
         }
         {
           name: 'AZURE_STORAGE_URL'
-          value: 'https://${storageAccount.name}.${az.environment().suffixes.storage}'
-        }
-        {
-          name: 'AZURE_STORAGE_CONTAINER'
-          value: blobContainer.name
+          value: 'https://${storageAccount.name}.blob.core.windows.net'
         }
       ]
     }
@@ -217,42 +165,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-
 // --------------------------------------------------
-// ACR Pull RBAC
+// ACR Pull permission for Container App
 // --------------------------------------------------
 
 resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(
-    containerRegistry.id,
-    containerApp.id,
-    acrPullRoleId
-  )
-
+  name: guid(containerRegistry.id, containerApp.id, 'AcrPull')
   scope: containerRegistry
 
   properties: {
-    roleDefinitionId: acrPullRoleId
-    principalId: containerApp.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// --------------------------------------------------
-// Blob Storage RBAC
-// --------------------------------------------------
-
-resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(
-    storageAccount.id,
-    containerApp.id,
-    storageBlobDataContributorRoleId
-  )
-
-  scope: storageAccount
-
-  properties: {
-    roleDefinitionId: storageBlobDataContributorRoleId
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+    )
     principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
