@@ -1,5 +1,22 @@
 targetScope = 'resourceGroup'
 
+// --------------------------------------------------
+// Parameters
+// --------------------------------------------------
+
+@description('Container image tag')
+param imageTag string = 'latest'
+
+@description('Azure Container Registry name created by bootstrap.bicep')
+param containerRegistryName string
+
+@description('Azure Document Intelligence endpoint')
+param diEndpoint string
+
+@secure()
+@description('Azure Document Intelligence key')
+param diKey string
+
 @description('Azure region used for all resources')
 param location string = resourceGroup().location
 
@@ -12,32 +29,35 @@ param environment string = 'dev'
 @description('Name of the blob container')
 param blobContainerName string = 'invoices'
 
+// --------------------------------------------------
+// Variables
+// --------------------------------------------------
+
 var namePrefix = '${projectName}-${environment}'
 
-// Storage Account and Azure Container Registry names
-// cannot contain hyphens and must be globally unique.
+// Storage Account names cannot contain hyphens
+// and must be globally unique.
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageAccountName = take('${projectName}${environment}${uniqueSuffix}', 24)
-var containerRegistryName = take('${projectName}${environment}${uniqueSuffix}', 50)
 
+// Built-in Azure RBAC roles
+var acrPullRoleId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+)
+
+var storageBlobDataContributorRoleId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+)
 
 // --------------------------------------------------
-// Azure Container Registry
+// Existing Azure Container Registry
 // --------------------------------------------------
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: containerRegistryName
-  location: location
-
-  sku: {
-    name: 'Basic'
-  }
-
-  properties: {
-    adminUserEnabled: false
-  }
 }
-
 
 // --------------------------------------------------
 // Storage Account
@@ -60,7 +80,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-
 // --------------------------------------------------
 // Blob Service
 // --------------------------------------------------
@@ -69,7 +88,6 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01'
   parent: storageAccount
   name: 'default'
 }
-
 
 // --------------------------------------------------
 // Blob Container
@@ -84,10 +102,10 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
   }
 }
 
-
 // --------------------------------------------------
 // Container Apps Environment
 // --------------------------------------------------
+
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: '${namePrefix}-environment'
   location: location
@@ -113,12 +131,22 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
 
-        registries: [
-    {
-      server: containerRegistry.properties.loginServer
-      identity: 'system'
-    }
-  ]
+      // Use the Container App system-assigned identity
+      // to authenticate against ACR.
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          identity: 'system'
+        }
+      ]
+
+      // Document Intelligence key is stored as a secret.
+      secrets: [
+        {
+          name: 'azure-di-key'
+          value: diKey
+        }
+      ]
 
       ingress: {
         external: true
@@ -134,55 +162,85 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
 
-   template: {
-  containers: [
-    {
-      name: 'scanly-api'
-    image: '${containerRegistry.properties.loginServer}/scanly-api:${imageTag}'
-      resources: {
-        cpu: json('0.5')
-        memory: '1Gi'
-      }
+    template: {
+      containers: [
+        {
+          name: 'scanly-api'
+          image: '${containerRegistry.properties.loginServer}/scanly-api:${imageTag}'
 
-      env: [
-        {
-          name: 'AZURE_DI_ENDPOINT'
-          value: ''
-        }
-        {
-          name: 'AZURE_STORAGE_URL'
-          value: 'https://${storageAccount.name}.blob.core.windows.net'
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+
+          env: [
+            {
+              name: 'AZURE_DI_ENDPOINT'
+              value: diEndpoint
+            }
+            {
+              name: 'AZURE_DI_KEY'
+              secretRef: 'azure-di-key'
+            }
+            {
+              name: 'AZURE_STORAGE_URL'
+              value: 'https://${storageAccount.name}.${az.environment().suffixes.storage}'
+            }
+            {
+              name: 'AZURE_STORAGE_CONTAINER'
+              value: blobContainer.name
+            }
+          ]
         }
       ]
-    }
-  ]
 
-  scale: {
-    minReplicas: 2
-    maxReplicas: 2
-  }
-}
+      scale: {
+        minReplicas: 2
+        maxReplicas: 2
+      }
+    }
   }
 }
 
 // --------------------------------------------------
-// ACR Pull permission for Container App
+// ACR Pull RBAC
 // --------------------------------------------------
 
 resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, containerApp.id, 'AcrPull')
+  name: guid(
+    containerRegistry.id,
+    containerApp.id,
+    acrPullRoleId
+  )
+
   scope: containerRegistry
 
   properties: {
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      '7f951dda-4ed3-4680-a7ca-43fe172d538d'
-    )
+    roleDefinitionId: acrPullRoleId
     principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
+// --------------------------------------------------
+// Blob Storage RBAC
+// --------------------------------------------------
+
+resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(
+    storageAccount.id,
+    containerApp.id,
+    storageBlobDataContributorRoleId
+  )
+
+  scope: storageAccount
+
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleId
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
 
 // --------------------------------------------------
 // Outputs
