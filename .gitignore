@@ -484,3 +484,5 @@ $RECYCLE.BIN/
 infra/main.json
 
 infra/*.json
+
+local-env.ps1

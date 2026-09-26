@@ -19,12 +19,18 @@ public class InvoiceStorageService
                 "AZURE_STORAGE_URL is not configured.");
         }
 
+        var containerName = configuration["AZURE_STORAGE_CONTAINER"];
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            throw new InvalidOperationException(
+                "AZURE_STORAGE_CONTAINER is not configured.");
+        }
         var blobServiceClient = new BlobServiceClient(
             new Uri(storageUrl),
             new DefaultAzureCredential());
 
         _containerClient =
-            blobServiceClient.GetBlobContainerClient("invoices");
+            blobServiceClient.GetBlobContainerClient(containerName);
     }
 
     public async Task SaveAsync(string invoiceId, InvoiceResult result)
