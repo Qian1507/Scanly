@@ -138,7 +138,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   containers: [
     {
       name: 'scanly-api'
-     image: '${containerRegistry.properties.loginServer}/scanly-api:latest'
+    image: '${containerRegistry.properties.loginServer}/scanly-api:${imageTag}'
       resources: {
         cpu: json('0.5')
         memory: '1Gi'
@@ -162,6 +162,24 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     maxReplicas: 2
   }
 }
+  }
+}
+
+// --------------------------------------------------
+// ACR Pull permission for Container App
+// --------------------------------------------------
+
+resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, containerApp.id, 'AcrPull')
+  scope: containerRegistry
+
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+    )
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 
