@@ -1,4 +1,5 @@
-﻿using Scanly.Api.Services;
+﻿using Scanly.Api.Models;
+using Scanly.Api.Services;
 
 namespace Scanly.Api.Endpoints;
 
@@ -8,14 +9,16 @@ public static class InvoiceEndpoints
     {
         // --------------------------------------------------
         // POST /invoices
-        // Upload invoice -> analyze -> map -> save to Blob
+        // Upload invoice -> analyze -> save to Blob Storage
         // --------------------------------------------------
+
         app.MapPost("/invoices", async (
             IFormFile file,
-            DocumentIntelligenceService documentIntelligenceService,
-            InvoiceStorageService invoiceStorageService) =>
+            IInvoiceAnalysisService invoiceAnalysisService,
+            IInvoiceStorageService invoiceStorageService,
+            CancellationToken cancellationToken) =>
         {
-            // Check that a file was uploaded
+            // Check that a file was uploaded.
             if (file == null || file.Length == 0)
             {
                 return Results.BadRequest(new
@@ -24,18 +27,18 @@ public static class InvoiceEndpoints
                 });
             }
 
-            // Generate unique ID for this invoice
+            // Generate a unique ID for this invoice.
             var invoiceId = Guid.NewGuid();
 
-            var analysisResult =
-            await documentIntelligenceService.AnalyzeInvoiceAsync(file);
-            // Convert Azure result into our Scanly response model
-            var invoiceResult = InvoiceMapper.Map(
-                analysisResult,
-                invoiceId,
-                file.FileName);
+            // Analyze the uploaded invoice and map it
+            // to the Scanly response model.
+            var invoiceResult =
+                await invoiceAnalysisService.AnalyzeAsync(
+                    file,
+                    invoiceId,
+                    cancellationToken);
 
-            // Save result as {invoiceId}.json in Azure Blob Storage
+            // Save result as {invoiceId}.json in Azure Blob Storage.
             await invoiceStorageService.SaveAsync(
                 invoiceId.ToString(),
                 invoiceResult);
@@ -44,19 +47,24 @@ public static class InvoiceEndpoints
         })
         .DisableAntiforgery()
         .WithName("UploadInvoice")
-        .WithTags("Invoices");
+        .WithTags("Invoices")
+        .Accepts<IFormFile>("multipart/form-data")
+        .Produces<InvoiceResult>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
 
 
         // --------------------------------------------------
         // GET /invoices/{id}
-        // Retrieve invoice JSON from Azure Blob Storage
+        // Retrieve invoice JSON from Blob Storage
         // --------------------------------------------------
+
         app.MapGet("/invoices/{id}", async (
             Guid id,
-            InvoiceStorageService invoiceStorageService) =>
+            IInvoiceStorageService invoiceStorageService) =>
         {
             var invoice =
-                await invoiceStorageService.GetAsync(id.ToString());
+                await invoiceStorageService.GetAsync(
+                    id.ToString());
 
             if (invoice is null)
             {
@@ -70,21 +78,27 @@ public static class InvoiceEndpoints
             return Results.Ok(invoice);
         })
         .WithName("GetInvoiceById")
-        .WithTags("Invoices");
+        .WithTags("Invoices")
+        .Produces<InvoiceResult>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
 
 
         // --------------------------------------------------
         // GET /invoices
-        // Placeholder for listing all invoices
+        // Retrieve all stored invoices from Blob Storage
         // --------------------------------------------------
-        app.MapGet("/invoices", () =>
+
+        app.MapGet("/invoices", async (
+            IInvoiceStorageService invoiceStorageService) =>
         {
-            return Results.Ok(new
-            {
-                message = "Invoice list endpoint."
-            });
+            var invoices =
+                await invoiceStorageService.GetAllAsync();
+
+            return Results.Ok(invoices);
         })
         .WithName("GetInvoices")
-        .WithTags("Invoices");
+        .WithTags("Invoices")
+        .Produces<IReadOnlyList<InvoiceResult>>(
+            StatusCodes.Status200OK);
     }
 }
