@@ -29,6 +29,15 @@ param environment string = 'dev'
 @description('Name of the blob container')
 param blobContainerName string = 'invoices'
 
+@description('Minimum number of Container App replicas')
+param minReplicas int = 1
+
+@description('Maximum number of Container App replicas')
+param maxReplicas int = 5
+
+@description('Maximum concurrent HTTP requests per replica before scaling')
+param concurrentRequests string = '10'
+
 // --------------------------------------------------
 // Variables
 // --------------------------------------------------
@@ -195,15 +204,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
 
       scale: {
-  minReplicas: 1
-  maxReplicas: 5
+  minReplicas: minReplicas
+  maxReplicas: maxReplicas
 
   rules: [
     {
       name: 'http-scaling-rule'
       http: {
         metadata: {
-          concurrentRequests: '10'
+          concurrentRequests: concurrentRequests
         }
       }
     }
