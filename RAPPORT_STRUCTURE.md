@@ -163,3 +163,14 @@ The development environment uses 1–2 replicas, while the intended production c
 The detailed cost analysis, including estimated monthly cost, scaling with increased customer volume, the most expensive Azure resource, and expected bottlenecks, is documented in `ARCHITECTURE.md`.
 
 The production scaling configuration was validated with Bicep `what-if`, but no separate production environment was deployed.
+
+## 9. Reflection
+
+### Qian
+_To be completed before final submission._
+
+### Ramya
+_To be completed before final submission._
+
+### Zara
+_To be completed before final submission._
