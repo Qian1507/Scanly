@@ -33,6 +33,14 @@ The application is containerized with Docker and deployed to Azure Container App
 - Bicep.
 - Git and Pull Requests.
 
+## Architecture and documentation
+
+The application consists of an ASP.NET Core API, Azure AI Document Intelligence, Azure Blob Storage, Azure Container Registry, and Azure Container Apps.
+
+The required technical reflection on Container Apps, CI/CD, Infrastructure as Code, security, and economy is documented in [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+Project background, implementation, testing, results, limitations, and future improvements are documented in [RAPPORT.md](./RAPPORT.md).
+
 ## Team and Development Workflow
 
 The project was developed by three students. Azure DevOps Work Items were used to organize the work.
@@ -229,6 +237,7 @@ infra/
 - HTTP-based autoscaling.
 
 The same `main.bicep` template is reused for the development environment and the intended production configuration through separate parameter files.
+
 
 ## Environment Configuration
 
