@@ -193,7 +193,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'AZURE_STORAGE_URL'
-              value: 'https://${storageAccount.name}.${az.environment().suffixes.storage}'
+              value: 'https://${storageAccount.name}.blob.${az.environment().suffixes.storage}'
             }
             {
               name: 'AZURE_STORAGE_CONTAINER'
