@@ -6,7 +6,7 @@ public static class HealthEndpoints
     {
         app.MapGet("/health", () =>
         {
-            return Results.Ok(new HealthResponse("healthy"));
+            return Results.Ok(new HealthResponse("healthy - demo deployment"));
         })
         .WithName("HealthCheck")
         .WithTags("Health")
