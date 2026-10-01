@@ -1,0 +1,195 @@
+trigger:
+  branches:
+    include:
+      - dev
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+- group: Scanly-Secrets
+
+- name: imageRepository
+  value: 'scanly-api'
+
+
+steps:
+
+# ==================================================
+# CI
+# ==================================================
+
+- task: UseDotNet@2
+  displayName: 'Use .NET 10'
+  inputs:
+    packageType: 'sdk'
+    version: '10.x'
+
+
+- script: dotnet restore Scanly.Api/Scanly.Api.csproj
+  displayName: 'Restore API dependencies'
+
+
+- script: dotnet restore Scanly.Api.Tests/Scanly.Api.Tests.csproj
+  displayName: 'Restore test dependencies'
+
+
+- script: dotnet build Scanly.Api/Scanly.Api.csproj --no-restore --configuration Release
+  displayName: 'Build API'
+
+
+- script: dotnet build Scanly.Api.Tests/Scanly.Api.Tests.csproj --no-restore --configuration Release
+  displayName: 'Build tests'
+
+
+- script: dotnet test Scanly.Api.Tests/Scanly.Api.Tests.csproj --no-build --configuration Release
+  displayName: 'Run tests'
+
+
+# ==================================================
+# CD
+# Only runs on the main branch.
+# dev runs CI only.
+# PR validation runs CI but does not deploy.
+# ==================================================
+
+# --------------------------------------------------
+# 1. Deploy bootstrap Bicep
+# Creates or updates the Azure Container Registry.
+# --------------------------------------------------
+
+- task: AzureCLI@2
+  displayName: 'Deploy bootstrap Bicep'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    azureSubscription: 'scanly-azure-Qian'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az deployment group create \
+        --name scanly-bootstrap \
+        --resource-group "$(AZURE_RESOURCE_GROUP)" \
+        --template-file infra/bootstrap.bicep
+
+
+# --------------------------------------------------
+# 2. Read ACR information from bootstrap outputs
+# --------------------------------------------------
+
+- task: AzureCLI@2
+  displayName: 'Get ACR information'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    azureSubscription: 'scanly-azure-Qian'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      ACR_NAME=$(az deployment group show \
+        --name scanly-bootstrap \
+        --resource-group "$(AZURE_RESOURCE_GROUP)" \
+        --query "properties.outputs.containerRegistryName.value" \
+        -o tsv)
+
+      ACR_LOGIN_SERVER=$(az deployment group show \
+        --name scanly-bootstrap \
+        --resource-group "$(AZURE_RESOURCE_GROUP)" \
+        --query "properties.outputs.containerRegistryLoginServer.value" \
+        -o tsv)
+
+      echo "ACR name: $ACR_NAME"
+      echo "ACR login server: $ACR_LOGIN_SERVER"
+
+      echo "##vso[task.setvariable variable=acrName]$ACR_NAME"
+      echo "##vso[task.setvariable variable=acrLoginServer]$ACR_LOGIN_SERVER"
+
+
+# --------------------------------------------------
+# 3. Build Docker image
+# Build ID is used as the image tag.
+# Example:
+# scanlydevxxx.azurecr.io/scanly-api:123
+# --------------------------------------------------
+
+- script: |
+    docker build \
+      -t $(acrLoginServer)/$(imageRepository):$(Build.BuildId) .
+  displayName: 'Build Docker image'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+
+# --------------------------------------------------
+# 4. Login to ACR and push Docker image
+# --------------------------------------------------
+
+- task: AzureCLI@2
+  displayName: 'Push Docker image to ACR'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    azureSubscription: 'scanly-azure-Qian'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az acr login --name "$(acrName)"
+
+      docker push \
+        $(acrLoginServer)/$(imageRepository):$(Build.BuildId)
+
+
+# --------------------------------------------------
+# 5. Deploy main Bicep
+# Pass the Build ID as the image tag.
+# Container App will therefore use the image
+# that was just pushed to ACR.
+# --------------------------------------------------
+
+- task: AzureCLI@2
+  displayName: 'Deploy main Bicep'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    azureSubscription: 'scanly-azure-Qian'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az deployment group create \
+        --name scanly-main \
+        --resource-group "$(AZURE_RESOURCE_GROUP)" \
+        --template-file infra/main.bicep \
+        --parameters \
+          containerRegistryName="$(acrName)" \
+          imageTag="$(Build.BuildId)" \
+          diEndpoint="$(AZURE_DI_ENDPOINT)" \
+          diKey="$(AZURE_DI_KEY)"
+
+
+# --------------------------------------------------
+# 6. Verify deployed health endpoint
+# Reads the Container App URL from Bicep output.
+# --------------------------------------------------
+
+- task: AzureCLI@2
+  displayName: 'Verify deployed health endpoint'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    azureSubscription: 'scanly-azure-Qian'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      APP_URL=$(az deployment group show \
+        --name scanly-main \
+        --resource-group "$(AZURE_RESOURCE_GROUP)" \
+        --query "properties.outputs.containerAppUrl.value" \
+        -o tsv)
+
+      echo "Container App URL: $APP_URL"
+      echo "Checking $APP_URL/health"
+
+      curl \
+        --fail \
+        --retry 6 \
+        --retry-delay 10 \
+        --retry-all-errors \
+        "$APP_URL/health"
+
+      echo ""
+      echo "Health check succeeded."
